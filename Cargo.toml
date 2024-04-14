@@ -1,0 +1,13 @@
+[package]
+name = "piet_tool"
+version = "1.0.0"
+edition = "2021"
+readme = "README.md"
+authors = ["Sam Vader <samvader@duck.com>"]
+description = "A simple Piet interpreter and code translator."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.5.4", features = ["derive"] }
+image = "0.25.1"
