@@ -1,4 +1,6 @@
 use clap::Parser;
+use color::ColorName;
+use interpreter::PietProgram;
 /// Piet interpreter with Forth code generation
 #[derive(Parser, Debug)]
 #[command(
@@ -29,7 +31,7 @@ struct Args {
 }
 
 pub mod color;
-pub mod evaluator;
+pub mod interpreter;
 
 use crate::color::PietColor;
 
@@ -38,16 +40,22 @@ fn main() {
     let _grid = load_image(&args.input_file);
     let _codel_size = args.codel_size;
     let _input_string = args.input_string;
-    let _translate = args.translate;
+    let translate = args.translate;
     let _output_file = args.output_file;
-    // let mut interpreter = Interpreter::new(grid, codel_size, input_string);
+    if translate != true {
+        let mut program = PietProgram::new(_grid, _input_string);
+        program.run();
+    } else {
+        // TRANSLATOR
+    }
 }
 
 pub fn load_image(path: &str) -> Vec<Vec<PietColor>> {
     let img = image::open(path).expect("Failed to open image");
     let img = img.to_rgb8();
     let (width, height) = img.dimensions();
-    let mut result = vec![vec![PietColor::White; width as usize]; height as usize];
+    let mut result =
+        vec![vec![PietColor::new(ColorName::Black, None, None); width as usize]; height as usize];
     for y in 0..height {
         for x in 0..width {
             let pixel = img.get_pixel(x, y);
