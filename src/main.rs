@@ -44,7 +44,7 @@ fn main() {
     let _output_file = args.output_file;
     if translate != true {
         let mut program = PietProgram::new(_grid, _input_string);
-        program.run();
+        program.execute();
     } else {
         // TRANSLATOR
     }

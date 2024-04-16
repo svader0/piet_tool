@@ -1,6 +1,9 @@
 use std::{default, io::stdout};
 
+use clap::command;
+
 use crate::color::{self, ColorName, PietColor};
+#[derive(Debug)]
 pub struct PietProgram {
     grid: Vec<Vec<PietColor>>,
     stack: Vec<i32>,
@@ -30,7 +33,33 @@ impl PietProgram {
         self.grid[position.1 as usize][position.0 as usize]
     }
 
-    pub fn run(&mut self) {}
+    pub fn execute(&mut self) {
+        let mut terminate = false;
+        // print the difference in hue for every color across the top row
+        loop {
+            if terminate == true {
+                println!("Terminating program");
+                break;
+            }
+            self.move_to_edge();
+            let travel_direction = self.choose_codel();
+            self.move_in_direction(travel_direction);
+            // Move in the direction of the DP once
+            let before_color = self.get_color(&self.position);
+            self.move_in_direction(self.direction_pointer);
+            let after_color = self.get_color(&self.position);
+
+            let lightness_difference =
+                after_color.lightness.unwrap() - before_color.lightness.unwrap();
+            let hue_difference = after_color.hue.unwrap() - before_color.hue.unwrap();
+
+            let command = Command::get_command(lightness_difference, hue_difference, after_color);
+            println!("Command: {:?}", command);
+            println!("Lightness Difference: {}", lightness_difference);
+            println!("Hue Difference: {}", hue_difference);
+            println!("Position: {:?}", self.position);
+        }
+    }
 
     fn choose_codel(&mut self) -> Direction {
         match (&self.direction_pointer, &self.codel_chooser) {
@@ -47,6 +76,33 @@ impl PietProgram {
                 &self.codel_chooser, &self.direction_pointer
             ),
         }
+    }
+
+    // finds the edge of the current colour block which is furthest in the direction of the DP. (This edge may be disjoint if the block is of a complex shape.)
+    fn move_to_edge(&mut self) {
+        let mut next_position = self.position;
+        loop {
+            let next_position_candidate = (
+                self.position.0 + self.direction_pointer.to_vector().0,
+                self.position.1 + self.direction_pointer.to_vector().1,
+            );
+            if self.get_color(&next_position_candidate) == self.get_color(&self.position) {
+                next_position = next_position_candidate;
+            } else {
+                break;
+            }
+        }
+        self.move_in_direction(self.direction_pointer);
+    }
+
+    fn move_in_direction(&mut self, direction: Direction) {
+        let next_position = (
+            self.position.0 + direction.to_vector().0,
+            self.position.1 + direction.to_vector().1,
+        );
+        self.position = next_position;
+
+        println!("Moving to {:?}", self.position);
     }
 }
 
@@ -69,7 +125,7 @@ impl Direction {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Command {
     Black,
     White,
