@@ -1,5 +1,4 @@
 use clap::{ColorChoice, Parser};
-use color::ColorName;
 use interpreter::PietProgram;
 /// Piet interpreter with Forth code generation
 #[derive(Parser, Debug)]
@@ -57,8 +56,7 @@ pub fn load_image(path: &str) -> Vec<Vec<PietColor>> {
     let img = image::open(path).expect("Failed to open image");
     let img = img.to_rgb8();
     let (width, height) = img.dimensions();
-    let mut result =
-        vec![vec![PietColor::new(ColorName::Black, 0, 0); width as usize]; height as usize];
+    let mut result = vec![vec![PietColor::default(); width as usize]; height as usize];
     for y in 0..height {
         for x in 0..width {
             let pixel = img.get_pixel(x, y);

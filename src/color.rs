@@ -145,6 +145,16 @@ impl PietColor {
     }
 }
 
+impl Default for PietColor {
+    fn default() -> Self {
+        PietColor {
+            name: ColorName::White,
+            lightness: 0,
+            hue: 0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColorName {
     Black,
