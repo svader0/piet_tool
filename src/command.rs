@@ -181,6 +181,32 @@ impl Command {
         }
     }
 
+    fn to_forth(&self, context: &mut PietProgram) -> String {
+        match self {
+            Self::Push => {
+                let value = context.get_current_value();
+                format!("{} ", value)
+            }
+            Self::Pop => "pop",
+            Self::Add => "+",
+            Self::Subtract => "-",
+            Self::Multiply => "*",
+            Self::Divide => "/",
+            Self::Mod => "%",
+            Self::Not => "!",
+            Self::Greater => ">",
+            Self::Pointer => "pointer",
+            Self::Switch => "switch",
+            Self::Duplicate => "dup",
+            Self::Roll => "roll",
+            Self::InNumber => "in_number",
+            Self::InChar => "in_char",
+            Self::OutNumber => "out_number",
+            Self::OutChar => "out_char",
+            _ => panic!("Command not implemented: {:?}", self),
+        }
+    }
+
     fn output_char(value: u8) {
         print!("{}", value as char);
     }
