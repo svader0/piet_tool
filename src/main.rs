@@ -1,6 +1,12 @@
+use std::env;
+
 use clap::{ColorChoice, Parser};
 use interpreter::PietProgram;
-/// Piet interpreter with Forth code generation
+
+#[macro_use]
+extern crate log;
+extern crate pretty_env_logger;
+
 #[derive(Parser, Debug)]
 #[command(
     version,
@@ -38,6 +44,8 @@ pub mod stack;
 use crate::color::PietColor;
 
 fn main() {
+    env::set_var("RUST_LOG", "debug");
+    pretty_env_logger::init();
     let args = Args::parse();
     let _grid = load_image(&args.input_file);
     let _codel_size = args.codel_size;

@@ -1,10 +1,9 @@
-const DEBUG: bool = false;
-
 use crate::{
     color::{ColorName, PietColor},
     command::Command,
     stack::Stack,
 };
+
 #[derive(Debug)]
 pub struct PietProgram {
     // The Piet program is a 2D grid of codels, each of which is a color.
@@ -113,12 +112,10 @@ impl PietProgram {
             let hue_difference = current_color.hue_difference(&next_color);
             // Get the command for the current and next codels
             let command = Command::get_command(lightness_difference, hue_difference);
-            if DEBUG {
-                println!(
-                "\nCommand \" {:?} \" chosen based on transition from {:?} to {:?} at position {:?} with lightness difference {} and hue difference {}\n with current value {}, stack {:?}, direction_pointer {:?}, codel_chooser {:?} \n",
-                command, current_color.name, next_color.name, self.position, lightness_difference, hue_difference, self.current_value, self.stack, self.direction_pointer, self.codel_chooser
-            );
-            }
+            trace!(
+                "Command \" {:?} \" chosen based on transition from {:?} to {:?}\nat position {:?}\nwith lightness difference {} and hue difference {}\ncurrent value {}, stack {:?}, direction_pointer = {:?}, codel_chooser = {:?} \n",
+                command, current_color.name, next_color.name, self.position, lightness_difference, hue_difference, self.current_value, self.stack, self.direction_pointer, self.codel_chooser);
+
             self.position = next_pos;
             command.execute(self);
         }
@@ -140,6 +137,7 @@ impl PietProgram {
     // These attempts are repeated, with the CC and DP being changed between alternate attempts.
     // If after eight attempts the interpreter cannot leave its current colour block, there is no way out and the program terminates.
     fn encounter_edge(&mut self) -> bool {
+        trace!("Encountered edge at position {:?}.", self.position);
         let mut attempts = 0;
         loop {
             match self.step() {
@@ -150,8 +148,10 @@ impl PietProgram {
                     }
                     if attempts % 2 == 0 {
                         self.toggle_codel_chooser();
+                        trace!("Toggled codel chooser to {:?}.", self.codel_chooser)
                     } else {
                         self.move_pointer_clockwise();
+                        trace!("Moved pointer clockwise to {:?}.", self.direction_pointer)
                     }
                     attempts += 1;
                 }
@@ -251,7 +251,6 @@ impl PietProgram {
         }
     }
 
-    // finds the edge of the current colour block which is furthest in the direction of the DP. (This edge may be disjoint if the block is of a complex shape.)
     // returns all codels in the current color block
 
     fn get_codels(&self) -> Vec<(i32, i32)> {
