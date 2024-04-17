@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{ColorChoice, Parser};
 use color::ColorName;
 use interpreter::PietProgram;
 /// Piet interpreter with Forth code generation
@@ -6,7 +6,8 @@ use interpreter::PietProgram;
 #[command(
     version,
     author,
-    long_about = "Piet interpreter with Forth code generation."
+    long_about = "Piet interpreter with Forth code generation.",
+    color(ColorChoice::Always)
 )]
 struct Args {
     /// The location of a valid input file

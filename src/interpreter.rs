@@ -1,6 +1,4 @@
-use std::ops::Add;
-
-use clap::builder::styling::Color;
+const DEBUG: bool = false;
 
 use crate::{
     color::{ColorName, PietColor},
@@ -35,7 +33,7 @@ impl PietProgram {
             grid,
             stack: stack,
             direction_pointer: Direction::Right,
-            codel_chooser: Direction::Right,
+            codel_chooser: Direction::Left,
             position: (0, 0),
             current_value: 0,
         }
@@ -96,10 +94,10 @@ impl PietProgram {
         let depth = depth % self.stack.len();
         let mut stack = self.stack.clone();
         let mut rolled = Vec::new();
-        for i in 0..depth {
+        for _ in 0..depth {
             rolled.push(stack.pop().unwrap());
         }
-        for i in 0..rolls {
+        for _ in 0..rolls {
             let value = rolled.pop().unwrap();
             stack.insert(depth, value);
         }
@@ -114,11 +112,10 @@ impl PietProgram {
             // which only happens if we've reached a black codel or an edge and we've
             // tried to move 8 times and failed. (See encounter_edge)
             if terminate == true {
-                println!("Terminating program");
                 break;
             }
             // Move our position to the next codel
-            self.step();
+            self.step().unwrap(); // TODO: this could blow up on me later
             self.current_value = self.get_codels().len() as i32;
             // Get the color of the current codel
             let current_color = self.get_color(&self.position);
@@ -141,11 +138,13 @@ impl PietProgram {
             let lightness_difference = current_color.lightness_difference(&next_color);
             let hue_difference = current_color.hue_difference(&next_color);
             // Get the command for the current and next codels
-            let command = Command::get_command(lightness_difference, hue_difference, next_color);
-            println!(
-                "Command \" {:?} \" chosen based on transition from {:?} to {:?} at position {:?} with lightness difference {} and hue difference {}",
-                command, current_color.name, next_color.name, self.position, lightness_difference, hue_difference
+            let command = Command::get_command(lightness_difference, hue_difference);
+            if DEBUG {
+                println!(
+                "\nCommand \" {:?} \" chosen based on transition from {:?} to {:?} at position {:?} with lightness difference {} and hue difference {}\n with current value {}, stack {:?}, direction_pointer {:?}, codel_chooser {:?} \n",
+                command, current_color.name, next_color.name, self.position, lightness_difference, hue_difference, self.current_value, self.stack, self.direction_pointer, self.codel_chooser
             );
+            }
             self.position = next_pos;
             command.execute(self);
         }
@@ -158,6 +157,7 @@ impl PietProgram {
             || next_pos.unwrap().0 >= self.grid[0].len() as i32
             || next_pos.unwrap().1 < 0
             || next_pos.unwrap().1 >= self.grid.len() as i32
+            || self.get_color(&next_pos.unwrap()).name == ColorName::Black
     }
 
     // Black colour blocks and the edges of the program restrict program flow.
@@ -168,30 +168,19 @@ impl PietProgram {
     fn encounter_edge(&mut self) -> bool {
         let mut attempts = 0;
         loop {
-            let next_pos = self.get_next_position();
-            if self.next_is_edge() {
-                attempts += 1;
-                println!("Attempt: {}", attempts);
-                if attempts == 8 {
-                    return true;
+            match self.step() {
+                Ok(_) => return false,
+                Err(_) => {
+                    if attempts == 8 {
+                        return true;
+                    }
+                    if attempts % 2 == 0 {
+                        self.toggle_codel_chooser();
+                    } else {
+                        self.move_pointer_clockwise();
+                    }
+                    attempts += 1;
                 }
-                if attempts % 2 == 0 {
-                    self.codel_chooser = match self.codel_chooser {
-                        Direction::Left => Direction::Right,
-                        Direction::Right => Direction::Left,
-                        _ => panic!("Invalid codel chooser: {:?}", &self.codel_chooser),
-                    };
-                } else {
-                    self.direction_pointer = match self.direction_pointer {
-                        Direction::Left => Direction::Up,
-                        Direction::Right => Direction::Down,
-                        Direction::Up => Direction::Right,
-                        Direction::Down => Direction::Left,
-                    };
-                }
-            } else {
-                self.position = next_pos.unwrap();
-                return false;
             }
         }
     }
@@ -216,11 +205,12 @@ impl PietProgram {
         }
     }
 
-    fn step(&mut self) {
+    fn step(&mut self) -> Result<(), ()> {
         // Given all the codels in the color block, get all codels in the current color block that are on the furthest edge in the direction of the DP.
         // For example, if the DP is facing right, get all codels on the FARTHEST right edge of the color block.
         let all_codels = self.get_codels();
-        // find max x or y values depending on DP direction
+
+        // Find max x or y values depending on DP direction
         let max: i32 = match self.direction_pointer {
             Direction::Right => all_codels.iter().map(|c| c.0).max().unwrap(),
             Direction::Down => all_codels.iter().map(|c| c.1).max().unwrap(),
@@ -228,9 +218,10 @@ impl PietProgram {
             Direction::Up => all_codels.iter().map(|c| c.1).min().unwrap(),
         };
 
-        // using our max, The interpreter finds the codel of the current colour block on that edge which is furthest to the CC's direction of the DP's direction of travel.
-        // For example, if our direction_pointer is right and our codel chooser is left, we choose the uppermost codel along the max edge (the codel with the smallest y value)
-        let codel = all_codels
+        // println!("Max value: {}", max);
+
+        // Get every codel whose x or y value is equal to the max value
+        let edge_codels = all_codels
             .iter()
             .filter(|c| match self.direction_pointer {
                 Direction::Right => c.0 == max,
@@ -238,13 +229,52 @@ impl PietProgram {
                 Direction::Left => c.0 == max,
                 Direction::Up => c.1 == max,
             })
-            .min_by_key(|c| match self.codel_chooser {
-                Direction::Left => c.1,
-                Direction::Right => c.1,
-                _ => panic!("Invalid codel chooser: {:?}", &self.codel_chooser),
-            })
-            .unwrap();
-        self.position = *codel;
+            .collect::<Vec<&(i32, i32)>>();
+
+        // println!("Edge codels: {:?}", edge_codels);
+
+        // If there is more than one codel on the edge, choose the one that is furthest in the direction of the CC
+        // use the choose_codel method to get the direction of the codel chooser, since it's relative to the DP.
+        if edge_codels.len() == 1 {
+            self.position = *edge_codels[0];
+        } else {
+            let codel = edge_codels
+                .iter()
+                .max_by_key(|c| match self.choose_codel() {
+                    Direction::Right => c.0,
+                    Direction::Down => c.1,
+                    Direction::Left => -c.0,
+                    Direction::Up => -c.1,
+                })
+                .unwrap();
+
+            self.position = **codel;
+        }
+
+        // Check if the next position is an edge or a black block
+        if self.next_is_edge() {
+            return Err(());
+        }
+
+        Ok(())
+    }
+
+    // given our DP and CC, we pick which codel to choose based on the direction of the DP and CC
+    fn choose_codel(&self) -> Direction {
+        match (self.direction_pointer, self.codel_chooser) {
+            (Direction::Right, Direction::Right) => Direction::Down,
+            (Direction::Right, Direction::Left) => Direction::Up,
+            (Direction::Down, Direction::Right) => Direction::Left,
+            (Direction::Down, Direction::Left) => Direction::Right,
+            (Direction::Left, Direction::Right) => Direction::Up,
+            (Direction::Left, Direction::Left) => Direction::Down,
+            (Direction::Up, Direction::Right) => Direction::Right,
+            (Direction::Up, Direction::Left) => Direction::Left,
+            _ => panic!(
+                "Invalid direction_pointer: {:?} or codel_chooser: {:?}",
+                &self.direction_pointer, &self.codel_chooser
+            ),
+        }
     }
 
     // finds the edge of the current colour block which is furthest in the direction of the DP. (This edge may be disjoint if the block is of a complex shape.)
@@ -289,10 +319,10 @@ impl PietProgram {
     }
 
     fn get_next_position(&self) -> Option<(i32, i32)> {
-        if (self.position.0 < 0
+        if self.position.0 < 0
             || self.position.0 >= self.grid[0].len() as i32
             || self.position.1 < 0
-            || self.position.1 >= self.grid.len() as i32)
+            || self.position.1 >= self.grid.len() as i32
         {
             return None;
         } else {

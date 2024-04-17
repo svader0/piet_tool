@@ -1,6 +1,5 @@
-use core::panic;
-
 use crate::{color::PietColor, interpreter::PietProgram};
+use core::panic;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Command {
@@ -27,11 +26,7 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn get_command(
-        lightness_difference: i8,
-        hue_difference: i8,
-        next_color: PietColor,
-    ) -> Self {
+    pub fn get_command(lightness_difference: i8, hue_difference: i8) -> Self {
         match (lightness_difference, hue_difference) {
             (0, 1) => Self::Add,
             (0, 2) => Self::Divide,
@@ -62,52 +57,43 @@ impl Command {
             Self::Push => {
                 let value = context.get_current_value();
                 context.push(value);
-                println!("Push executed with value: {}", value);
             }
             Self::Pop => {
                 context.pop();
-                println!("Pop executed = {}", context.get_current_value());
             }
             Self::Add => {
                 let a = context.pop();
                 let b = context.pop();
                 context.push(a + b);
-                println!("Add executed with values: {} and {}", a, b);
             }
             Self::Subtract => {
                 let a = context.pop();
                 let b = context.pop();
                 context.push(b - a);
-                println!("Subtract executed with values: {} and {}", a, b);
             }
             Self::Multiply => {
                 let a = context.pop();
                 let b = context.pop();
                 context.push(a * b);
-                println!("Multiply executed with values: {} and {}", a, b);
             }
             Self::Divide => {
                 let a = context.pop();
                 let b = context.pop();
                 context.push(b / a);
-                println!("Divide executed with values: {} and {}", a, b);
             }
             Self::Mod => {
                 let a = context.pop();
                 let b = context.pop();
                 context.push(b % a);
-                println!("Mod executed with values: {} and {}", a, b);
             }
             Self::Not => {
                 let a = context.pop();
                 context.push(if a == 0 { 1 } else { 0 });
-                println!("Not executed with value: {}", a);
             }
             Self::Greater => {
                 let a = context.pop();
                 let b = context.pop();
                 context.push(if b > a { 1 } else { 0 });
-                println!("Greater executed with values: {} and {}", a, b);
             }
             Self::Pointer => {
                 let mut a = context.pop();
@@ -119,7 +105,6 @@ impl Command {
                     }
                     a = a - 1;
                 }
-                println!("Pointer executed with value: {}", a);
             }
             Self::Switch => {
                 let mut a = context.pop();
@@ -127,13 +112,11 @@ impl Command {
                     context.toggle_codel_chooser();
                     a = a - 1;
                 }
-                println!("Switch executed with value: {}", a);
             }
             Self::Duplicate => {
                 let a = context.get_current_value();
                 context.push(a);
                 context.push(a);
-                println!("Duplicate executed");
             }
             Self::Roll => {
                 let a = context.pop();
@@ -146,27 +129,22 @@ impl Command {
                     rolls = b + rolls;
                 }
                 context.roll(b, rolls);
-                println!("Roll executed");
             }
             Self::InNumber => {
                 let value = Self::get_input_number();
                 context.push(value);
-                println!("InNumber executed");
             }
             Self::InChar => {
                 let value = Self::get_input_char();
                 context.push(value as i32);
-                println!("InChar executed");
             }
             Self::OutNumber => {
                 let value = context.pop();
                 Self::output_number(value);
-                println!("OutNumber executed");
             }
             Self::OutChar => {
                 let value = context.pop();
                 Self::output_char(value as u8);
-                println!("OutChar executed");
             }
             _ => panic!("Command not implemented: {:?}", self),
         }
