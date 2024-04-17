@@ -31,6 +31,7 @@ struct Args {
 }
 
 pub mod color;
+pub mod command;
 pub mod interpreter;
 
 use crate::color::PietColor;
@@ -42,11 +43,11 @@ fn main() {
     let _input_string = args.input_string;
     let translate = args.translate;
     let _output_file = args.output_file;
-    if translate != true {
+    if translate == true {
+        // TRANSLATOR
+    } else {
         let mut program = PietProgram::new(_grid, _input_string);
         program.execute();
-    } else {
-        // TRANSLATOR
     }
 }
 
@@ -55,7 +56,7 @@ pub fn load_image(path: &str) -> Vec<Vec<PietColor>> {
     let img = img.to_rgb8();
     let (width, height) = img.dimensions();
     let mut result =
-        vec![vec![PietColor::new(ColorName::Black, None, None); width as usize]; height as usize];
+        vec![vec![PietColor::new(ColorName::Black, 0, 0); width as usize]; height as usize];
     for y in 0..height {
         for x in 0..width {
             let pixel = img.get_pixel(x, y);

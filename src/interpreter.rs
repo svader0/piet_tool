@@ -1,108 +1,305 @@
-use std::{default, io::stdout};
+use std::ops::Add;
 
-use clap::command;
+use clap::builder::styling::Color;
 
-use crate::color::{self, ColorName, PietColor};
+use crate::{
+    color::{ColorName, PietColor},
+    command::Command,
+};
 #[derive(Debug)]
 pub struct PietProgram {
+    // The Piet program is a 2D grid of codels, each of which is a color.
     grid: Vec<Vec<PietColor>>,
+    // The stack is a LIFO data structure that holds integers. Piet is a stack-based language.
     stack: Vec<i32>,
+    // The DP is the direction pointer. It points in one of four directions: right, down, left, or up.
     direction_pointer: Direction,
+    // The CC is the codel chooser. It points in one of two directions: right or left.
     codel_chooser: Direction,
+    // The position is the current position of the interpreter in the grid.
     position: (i32, i32),
+    // The current value is the current value of the color block that our interpreter is on.
+    current_value: i32,
 }
 
 impl PietProgram {
     pub fn new(grid: Vec<Vec<PietColor>>, input_string: String) -> Self {
+        // convert each character in the input string to its ASCII value
+        // and put it on the stack
+        let mut stack = Vec::new();
+        for x in input_string.chars() {
+            let ascii = x as i32;
+            stack.push(ascii);
+        }
         PietProgram {
             grid,
-            stack: Vec::new(),
+            stack: stack,
             direction_pointer: Direction::Right,
             codel_chooser: Direction::Right,
             position: (0, 0),
+            current_value: 0,
         }
     }
 
-    // The direction pointer (DP) is what moves along the program to make it run. It can be in any one of the 4 cardinal directions. The direction pointer always starts at the color block containing the upper-left-most codel, and always starts facing right.
-    // After it has executed the proper command, it will move on to the next color block that is both:
-    // 1. Touching the current color block, and
-    // 2. The farthest block in the direction of the direction pointer.
-    // If there are multiple blocks that meet these criteria, the DP will move to the one that is farthest in the direction of the codel chooser. The codel chooser (CC) is what determines the color of the next block the DP will move to. It can be in any one of the 4 cardinal directions. The codel chooser always starts at the color block containing the upper-left-most codel, and always starts facing right.
+    // getters and setters
 
-    fn get_color(&self, position: &(i32, i32)) -> PietColor {
+    pub fn get_color(&self, position: &(i32, i32)) -> PietColor {
         self.grid[position.1 as usize][position.0 as usize]
+    }
+
+    pub fn get_current_value(&self) -> i32 {
+        self.current_value
+    }
+
+    pub fn toggle_codel_chooser(&mut self) {
+        self.codel_chooser = match self.codel_chooser {
+            Direction::Right => Direction::Left,
+            Direction::Left => Direction::Right,
+            _ => panic!("Invalid codel chooser: {:?}", &self.codel_chooser),
+        };
+    }
+
+    pub fn move_pointer_clockwise(&mut self) {
+        self.direction_pointer = match self.direction_pointer {
+            Direction::Right => Direction::Down,
+            Direction::Down => Direction::Left,
+            Direction::Left => Direction::Up,
+            Direction::Up => Direction::Right,
+        };
+    }
+
+    pub fn move_pointer_anticlockwise(&mut self) {
+        self.direction_pointer = match self.direction_pointer {
+            Direction::Right => Direction::Up,
+            Direction::Down => Direction::Right,
+            Direction::Left => Direction::Down,
+            Direction::Up => Direction::Left,
+        };
+    }
+
+    pub fn get_stack(&self) -> &Vec<i32> {
+        &self.stack
+    }
+
+    pub fn push(&mut self, value: i32) {
+        self.stack.push(value);
+    }
+
+    pub fn pop(&mut self) -> i32 {
+        self.stack.pop().unwrap() // TODO: Handle this error
+    }
+
+    pub fn roll(&mut self, depth: i32, rolls: i32) {
+        let depth = depth.abs() as usize;
+        let rolls = rolls.abs() as usize;
+        let rolls = rolls % self.stack.len();
+        let depth = depth % self.stack.len();
+        let mut stack = self.stack.clone();
+        let mut rolled = Vec::new();
+        for i in 0..depth {
+            rolled.push(stack.pop().unwrap());
+        }
+        for i in 0..rolls {
+            let value = rolled.pop().unwrap();
+            stack.insert(depth, value);
+        }
+        self.stack = stack;
     }
 
     pub fn execute(&mut self) {
         let mut terminate = false;
-        // print the difference in hue for every color across the top row
+
         loop {
+            // check to see if we've terminated the program
+            // which only happens if we've reached a black codel or an edge and we've
+            // tried to move 8 times and failed. (See encounter_edge)
             if terminate == true {
                 println!("Terminating program");
                 break;
             }
-            self.move_to_edge();
-            let travel_direction = self.choose_codel();
-            self.move_in_direction(travel_direction);
-            // Move in the direction of the DP once
-            let before_color = self.get_color(&self.position);
-            self.move_in_direction(self.direction_pointer);
-            let after_color = self.get_color(&self.position);
+            // Move our position to the next codel
+            self.step();
+            self.current_value = self.get_codels().len() as i32;
+            // Get the color of the current codel
+            let current_color = self.get_color(&self.position);
+            // check bounds
+            if self.next_is_edge() {
+                terminate = self.encounter_edge();
+                continue;
+            }
 
-            let lightness_difference =
-                after_color.lightness.unwrap() - before_color.lightness.unwrap();
-            let hue_difference = after_color.hue.unwrap() - before_color.hue.unwrap();
+            // Get the color of the next codel
+            let next_pos = self.get_next_position().unwrap();
+            let next_color = self.get_color(&next_pos);
+            // check if white
+            if next_color.name == ColorName::White {
+                self.glide();
+                continue;
+            }
 
-            let command = Command::get_command(lightness_difference, hue_difference, after_color);
-            println!("Command: {:?}", command);
-            println!("Lightness Difference: {}", lightness_difference);
-            println!("Hue Difference: {}", hue_difference);
-            println!("Position: {:?}", self.position);
+            // Get the difference in lightness and hue between the current and next codels
+            let lightness_difference = current_color.lightness_difference(&next_color);
+            let hue_difference = current_color.hue_difference(&next_color);
+            // Get the command for the current and next codels
+            let command = Command::get_command(lightness_difference, hue_difference, next_color);
+            println!(
+                "Command \" {:?} \" chosen based on transition from {:?} to {:?} at position {:?} with lightness difference {} and hue difference {}",
+                command, current_color.name, next_color.name, self.position, lightness_difference, hue_difference
+            );
+            self.position = next_pos;
+            command.execute(self);
         }
     }
 
-    fn choose_codel(&mut self) -> Direction {
-        match (&self.direction_pointer, &self.codel_chooser) {
-            (Direction::Right, Direction::Left) => Direction::Up,
-            (Direction::Right, Direction::Right) => Direction::Down,
-            (Direction::Down, Direction::Left) => Direction::Right,
-            (Direction::Down, Direction::Right) => Direction::Left,
-            (Direction::Left, Direction::Left) => Direction::Down,
-            (Direction::Left, Direction::Right) => Direction::Up,
-            (Direction::Up, Direction::Left) => Direction::Left,
-            (Direction::Up, Direction::Right) => Direction::Right,
-            _ => panic!(
-                "Invalid codel chooser: {:?} with direction pointer {:?}",
-                &self.codel_chooser, &self.direction_pointer
-            ),
+    fn next_is_edge(&self) -> bool {
+        let next_pos = self.get_next_position();
+        next_pos.is_none()
+            || next_pos.unwrap().0 < 0
+            || next_pos.unwrap().0 >= self.grid[0].len() as i32
+            || next_pos.unwrap().1 < 0
+            || next_pos.unwrap().1 >= self.grid.len() as i32
+    }
+
+    // Black colour blocks and the edges of the program restrict program flow.
+    // If the Piet interpreter attempts to move into a black block or off an edge, it is stopped and the CC is toggled.
+    // The interpreter then attempts to move from its current block again. If it fails a second time, the DP is moved clockwise one step.
+    // These attempts are repeated, with the CC and DP being changed between alternate attempts.
+    // If after eight attempts the interpreter cannot leave its current colour block, there is no way out and the program terminates.
+    fn encounter_edge(&mut self) -> bool {
+        let mut attempts = 0;
+        loop {
+            let next_pos = self.get_next_position();
+            if self.next_is_edge() {
+                attempts += 1;
+                println!("Attempt: {}", attempts);
+                if attempts == 8 {
+                    return true;
+                }
+                if attempts % 2 == 0 {
+                    self.codel_chooser = match self.codel_chooser {
+                        Direction::Left => Direction::Right,
+                        Direction::Right => Direction::Left,
+                        _ => panic!("Invalid codel chooser: {:?}", &self.codel_chooser),
+                    };
+                } else {
+                    self.direction_pointer = match self.direction_pointer {
+                        Direction::Left => Direction::Up,
+                        Direction::Right => Direction::Down,
+                        Direction::Up => Direction::Right,
+                        Direction::Down => Direction::Left,
+                    };
+                }
+            } else {
+                self.position = next_pos.unwrap();
+                return false;
+            }
         }
+    }
+
+    // If the DP encounters a white codel, it will glide along the white codels until it reaches a colored codel.
+    fn glide(&mut self) {
+        loop {
+            let next_pos = self.get_next_position();
+            if next_pos.is_none() {
+                self.encounter_edge();
+            }
+            let next_pos = next_pos.unwrap();
+            if next_pos.0 < 0
+                || next_pos.0 >= self.grid[0].len() as i32
+                || next_pos.1 < 0
+                || next_pos.1 >= self.grid.len() as i32
+                || self.get_color(&next_pos).name != ColorName::White
+            {
+                break;
+            }
+            self.position = next_pos;
+        }
+    }
+
+    fn step(&mut self) {
+        // Given all the codels in the color block, get all codels in the current color block that are on the furthest edge in the direction of the DP.
+        // For example, if the DP is facing right, get all codels on the FARTHEST right edge of the color block.
+        let all_codels = self.get_codels();
+        // find max x or y values depending on DP direction
+        let max: i32 = match self.direction_pointer {
+            Direction::Right => all_codels.iter().map(|c| c.0).max().unwrap(),
+            Direction::Down => all_codels.iter().map(|c| c.1).max().unwrap(),
+            Direction::Left => all_codels.iter().map(|c| c.0).min().unwrap(),
+            Direction::Up => all_codels.iter().map(|c| c.1).min().unwrap(),
+        };
+
+        // using our max, The interpreter finds the codel of the current colour block on that edge which is furthest to the CC's direction of the DP's direction of travel.
+        // For example, if our direction_pointer is right and our codel chooser is left, we choose the uppermost codel along the max edge (the codel with the smallest y value)
+        let codel = all_codels
+            .iter()
+            .filter(|c| match self.direction_pointer {
+                Direction::Right => c.0 == max,
+                Direction::Down => c.1 == max,
+                Direction::Left => c.0 == max,
+                Direction::Up => c.1 == max,
+            })
+            .min_by_key(|c| match self.codel_chooser {
+                Direction::Left => c.1,
+                Direction::Right => c.1,
+                _ => panic!("Invalid codel chooser: {:?}", &self.codel_chooser),
+            })
+            .unwrap();
+        self.position = *codel;
     }
 
     // finds the edge of the current colour block which is furthest in the direction of the DP. (This edge may be disjoint if the block is of a complex shape.)
-    fn move_to_edge(&mut self) {
-        let mut next_position = self.position;
-        loop {
-            let next_position_candidate = (
-                self.position.0 + self.direction_pointer.to_vector().0,
-                self.position.1 + self.direction_pointer.to_vector().1,
-            );
-            if self.get_color(&next_position_candidate) == self.get_color(&self.position) {
-                next_position = next_position_candidate;
-            } else {
-                break;
+    // returns all codels in the current color block
+    fn get_codels(&self) -> Vec<(i32, i32)> {
+        let mut codels = Vec::new();
+        let mut visited = vec![vec![false; self.grid[0].len()]; self.grid.len()];
+        let mut stack = vec![self.position];
+        let current_color = self.get_color(&self.position); // Get the color of the current position
+        while !stack.is_empty() {
+            let current = stack.pop().unwrap();
+            if visited[current.1 as usize][current.0 as usize] {
+                continue;
+            }
+            visited[current.1 as usize][current.0 as usize] = true;
+            if self.get_color(&current) == current_color {
+                // Only add codels with the same color as the current position
+                codels.push(current);
+            }
+            for direction in &[
+                Direction::Right,
+                Direction::Down,
+                Direction::Left,
+                Direction::Up,
+            ] {
+                let next_position = (
+                    current.0 + direction.to_vector().0,
+                    current.1 + direction.to_vector().1,
+                );
+                if next_position.0 >= 0
+                    && next_position.0 < self.grid[0].len() as i32
+                    && next_position.1 >= 0
+                    && next_position.1 < self.grid.len() as i32
+                    && self.get_color(&next_position) == current_color
+                // Only push positions with the same color as the current position
+                {
+                    stack.push(next_position);
+                }
             }
         }
-        self.move_in_direction(self.direction_pointer);
+        codels
     }
 
-    fn move_in_direction(&mut self, direction: Direction) {
-        let next_position = (
-            self.position.0 + direction.to_vector().0,
-            self.position.1 + direction.to_vector().1,
-        );
-        self.position = next_position;
-
-        println!("Moving to {:?}", self.position);
+    fn get_next_position(&self) -> Option<(i32, i32)> {
+        if (self.position.0 < 0
+            || self.position.0 >= self.grid[0].len() as i32
+            || self.position.1 < 0
+            || self.position.1 >= self.grid.len() as i32)
+        {
+            return None;
+        } else {
+            let (dx, dy) = self.direction_pointer.to_vector();
+            let next_position = (self.position.0 + dx, self.position.1 + dy);
+            Some(next_position)
+        }
     }
 }
 
@@ -121,66 +318,6 @@ impl Direction {
             Direction::Down => (0, 1),
             Direction::Left => (-1, 0),
             Direction::Up => (0, -1),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Command {
-    Black,
-    White,
-    Nothing,
-    Push,
-    Pop,
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    Mod,
-    Not,
-    Greater,
-    Pointer,
-    Switch,
-    Duplicate,
-    Roll,
-    InNumber,
-    InChar,
-    OutNumber,
-    OutChar,
-}
-
-impl Command {
-    fn get_command(lightness_difference: i8, hue_difference: i8, next_color: PietColor) -> Self {
-        if next_color.name == ColorName::Black {
-            return Command::Black;
-        } else if next_color.name == ColorName::White {
-            return Command::White;
-        }
-        if lightness_difference == 0 && hue_difference == 0 {
-            return Command::Nothing;
-        }
-        match (lightness_difference, hue_difference) {
-            (0, 1) => Command::Push,
-            (0, 2) => Command::Pop,
-            (0, 3) => Command::Add,
-            (0, 4) => Command::Subtract,
-            (0, 5) => Command::Multiply,
-            (0, 6) => Command::Divide,
-            (0, 7) => Command::Mod,
-            (1, 0) => Command::Not,
-            (1, 1) => Command::Greater,
-            (1, 2) => Command::Pointer,
-            (1, 3) => Command::Switch,
-            (1, 4) => Command::Duplicate,
-            (1, 5) => Command::Roll,
-            (1, 6) => Command::InNumber,
-            (1, 7) => Command::InChar,
-            (2, 0) => Command::OutNumber,
-            (2, 1) => Command::OutChar,
-            _ => panic!(
-                "Invalid command for : DL{} DH{}",
-                lightness_difference, hue_difference
-            ),
         }
     }
 }
