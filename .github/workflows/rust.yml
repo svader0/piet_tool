@@ -9,6 +9,9 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+permissions:
+    checks: write
+
 jobs:
   build:
 
@@ -20,7 +23,15 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
-    - name: clippy-check
-      uses: loliGothicK/clippy-check@v0.3.1
-            
-    
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v3
+        - uses: dtolnay/rust-toolchain@stable
+          with:
+            components: clippy
+        - uses: auguwu/clippy-action@1.2.1
+          with:
+              token: ${{secrets.GITHUB_TOKEN}}
