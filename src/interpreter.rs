@@ -3,13 +3,14 @@ const DEBUG: bool = false;
 use crate::{
     color::{ColorName, PietColor},
     command::Command,
+    stack::Stack,
 };
 #[derive(Debug)]
 pub struct PietProgram {
     // The Piet program is a 2D grid of codels, each of which is a color.
     grid: Vec<Vec<PietColor>>,
     // The stack is a LIFO data structure that holds integers. Piet is a stack-based language.
-    stack: Vec<i32>,
+    pub stack: Stack,
     // The DP is the direction pointer. It points in one of four directions: right, down, left, or up.
     direction_pointer: Direction,
     // The CC is the codel chooser. It points in one of two directions: right or left.
@@ -24,14 +25,14 @@ impl PietProgram {
     pub fn new(grid: Vec<Vec<PietColor>>, input_string: String) -> Self {
         // convert each character in the input string to its ASCII value
         // and put it on the stack
-        let mut stack = Vec::new();
+        let mut piet_stack = Stack::new();
         for x in input_string.chars() {
             let ascii = x as i32;
-            stack.push(ascii);
+            piet_stack.push(ascii);
         }
         PietProgram {
             grid,
-            stack: stack,
+            stack: piet_stack,
             direction_pointer: Direction::Right,
             codel_chooser: Direction::Left,
             position: (0, 0),
@@ -75,35 +76,6 @@ impl PietProgram {
         };
     }
 
-    pub fn get_stack(&self) -> &Vec<i32> {
-        &self.stack
-    }
-
-    pub fn push(&mut self, value: i32) {
-        self.stack.push(value);
-    }
-
-    pub fn pop(&mut self) -> i32 {
-        self.stack.pop().unwrap() // TODO: Handle this error
-    }
-
-    pub fn roll(&mut self, depth: i32, rolls: i32) {
-        let depth = depth.abs() as usize;
-        let rolls = rolls.abs() as usize;
-        let rolls = rolls % self.stack.len();
-        let depth = depth % self.stack.len();
-        let mut stack = self.stack.clone();
-        let mut rolled = Vec::new();
-        for _ in 0..depth {
-            rolled.push(stack.pop().unwrap());
-        }
-        for _ in 0..rolls {
-            let value = rolled.pop().unwrap();
-            stack.insert(depth, value);
-        }
-        self.stack = stack;
-    }
-
     pub fn execute(&mut self) {
         let mut terminate = false;
 
@@ -111,19 +83,21 @@ impl PietProgram {
             // check to see if we've terminated the program
             // which only happens if we've reached a black codel or an edge and we've
             // tried to move 8 times and failed. (See encounter_edge)
-            if terminate == true {
+            if terminate {
                 break;
             }
-            // Move our position to the next codel
-            self.step().unwrap(); // TODO: this could blow up on me later
+
+            // Move our position to the next codel.
+            // If we're not able to move to the next codel, we've reached an edge or a black codel.
+            if self.step().is_err() {
+                // encounter_edge returns true if we've tried to move 8 times and failed.
+                terminate = self.encounter_edge();
+                continue;
+            }
             self.current_value = self.get_codels().len() as i32;
             // Get the color of the current codel
             let current_color = self.get_color(&self.position);
             // check bounds
-            if self.next_is_edge() {
-                terminate = self.encounter_edge();
-                continue;
-            }
 
             // Get the color of the next codel
             let next_pos = self.get_next_position().unwrap();
@@ -279,13 +253,13 @@ impl PietProgram {
 
     // finds the edge of the current colour block which is furthest in the direction of the DP. (This edge may be disjoint if the block is of a complex shape.)
     // returns all codels in the current color block
+
     fn get_codels(&self) -> Vec<(i32, i32)> {
         let mut codels = Vec::new();
         let mut visited = vec![vec![false; self.grid[0].len()]; self.grid.len()];
         let mut stack = vec![self.position];
         let current_color = self.get_color(&self.position); // Get the color of the current position
-        while !stack.is_empty() {
-            let current = stack.pop().unwrap();
+        while let Some(current) = stack.pop() {
             if visited[current.1 as usize][current.0 as usize] {
                 continue;
             }
@@ -324,7 +298,7 @@ impl PietProgram {
             || self.position.1 < 0
             || self.position.1 >= self.grid.len() as i32
         {
-            return None;
+            None
         } else {
             let (dx, dy) = self.direction_pointer.to_vector();
             let next_position = (self.position.0 + dx, self.position.1 + dy);
@@ -342,7 +316,7 @@ pub enum Direction {
 }
 
 impl Direction {
-    fn to_vector(&self) -> (i32, i32) {
+    fn to_vector(self) -> (i32, i32) {
         match self {
             Direction::Right => (1, 0),
             Direction::Down => (0, 1),

@@ -1,4 +1,4 @@
-use crate::{color::PietColor, interpreter::PietProgram};
+use crate::interpreter::PietProgram;
 use core::panic;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -56,94 +56,94 @@ impl Command {
         match self {
             Self::Push => {
                 let value = context.get_current_value();
-                context.push(value);
+                context.stack.push(value);
             }
             Self::Pop => {
-                context.pop();
+                context.stack.pop();
             }
             Self::Add => {
-                let a = context.pop();
-                let b = context.pop();
-                context.push(a + b);
+                let a = context.stack.pop();
+                let b = context.stack.pop();
+                context.stack.push(a + b);
             }
             Self::Subtract => {
-                let a = context.pop();
-                let b = context.pop();
-                context.push(b - a);
+                let a = context.stack.pop();
+                let b = context.stack.pop();
+                context.stack.push(b - a);
             }
             Self::Multiply => {
-                let a = context.pop();
-                let b = context.pop();
-                context.push(a * b);
+                let a = context.stack.pop();
+                let b = context.stack.pop();
+                context.stack.push(a * b);
             }
             Self::Divide => {
-                let a = context.pop();
-                let b = context.pop();
-                context.push(b / a);
+                let a = context.stack.pop();
+                let b = context.stack.pop();
+                context.stack.push(b / a);
             }
             Self::Mod => {
-                let a = context.pop();
-                let b = context.pop();
-                context.push(b % a);
+                let a = context.stack.pop();
+                let b = context.stack.pop();
+                context.stack.push(b % a);
             }
             Self::Not => {
-                let a = context.pop();
-                context.push(if a == 0 { 1 } else { 0 });
+                let a = context.stack.pop();
+                context.stack.push(if a == 0 { 1 } else { 0 });
             }
             Self::Greater => {
-                let a = context.pop();
-                let b = context.pop();
-                context.push(if b > a { 1 } else { 0 });
+                let a = context.stack.pop();
+                let b = context.stack.pop();
+                context.stack.push(if b > a { 1 } else { 0 });
             }
             Self::Pointer => {
-                let mut a = context.pop();
+                let mut a = context.stack.pop();
                 while a != 0 {
                     if a > 0 {
                         context.move_pointer_clockwise();
                     } else {
                         context.move_pointer_anticlockwise();
                     }
-                    a = a - 1;
+                    a -= 1;
                 }
             }
             Self::Switch => {
-                let mut a = context.pop();
+                let mut a = context.stack.pop();
                 while a != 0 {
                     context.toggle_codel_chooser();
-                    a = a - 1;
+                    a -= 1;
                 }
             }
             Self::Duplicate => {
                 let a = context.get_current_value();
-                context.push(a);
-                context.push(a);
+                context.stack.push(a);
+                context.stack.push(a);
             }
             Self::Roll => {
-                let a = context.pop();
-                let b = context.pop();
+                let a = context.stack.pop();
+                let b = context.stack.pop();
                 if b < 0 {
                     return;
                 }
                 let mut rolls = a % b;
                 if rolls < 0 {
-                    rolls = b + rolls;
+                    rolls += b;
                 }
-                context.roll(b, rolls);
+                context.stack.roll(b, rolls);
             }
             Self::InNumber => {
                 let value = Self::get_input_number();
-                context.push(value);
+                context.stack.push(value);
             }
             Self::InChar => {
                 let value = Self::get_input_char();
-                context.push(value as i32);
+                context.stack.push(value as i32);
             }
             Self::OutNumber => {
-                let value = context.pop();
+                let value = context.stack.pop();
                 Self::output_number(value);
             }
             Self::OutChar => {
-                let value = context.pop();
+                let value = context.stack.pop();
                 Self::output_char(value as u8);
             }
             _ => panic!("Command not implemented: {:?}", self),

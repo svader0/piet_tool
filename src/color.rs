@@ -17,8 +17,7 @@ impl PietColor {
     // The hue difference between two colors is the number of steps in the hue cycle
     // between the two colors.
     pub fn hue_difference(&self, other: &PietColor) -> i8 {
-        let hue_difference = (other.hue - self.hue + 6) % 6;
-        hue_difference
+        (other.hue - self.hue + 6) % 6
     }
 
     // Lightness Cycle: light -> normal -> dark

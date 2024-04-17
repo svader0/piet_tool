@@ -34,6 +34,7 @@ struct Args {
 pub mod color;
 pub mod command;
 pub mod interpreter;
+pub mod stack;
 
 use crate::color::PietColor;
 
@@ -44,7 +45,7 @@ fn main() {
     let _input_string = args.input_string;
     let translate = args.translate;
     let _output_file = args.output_file;
-    if translate == true {
+    if translate {
         // TRANSLATOR
     } else {
         let mut program = PietProgram::new(_grid, _input_string);
