@@ -43,6 +43,12 @@ pub mod stack;
 
 use crate::color::PietColor;
 
+/*
+    known issues:
+    - roll command is not implemented correctly
+    - when you start on white you start on DL 0, DH 0 which is not a valid command
+*/
+
 fn main() {
     env::set_var("RUST_LOG", "debug");
     pretty_env_logger::init();
