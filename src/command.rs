@@ -1,5 +1,6 @@
 use crate::interpreter::PietProgram;
 use core::panic;
+use std::borrow::Cow;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Command {
@@ -181,28 +182,28 @@ impl Command {
         }
     }
 
-    fn to_forth(&self, context: &mut PietProgram) -> String {
+    pub fn to_forth(&self, context: &mut PietProgram) -> Cow<'static, str> {
         match self {
             Self::Push => {
                 let value = context.get_current_value();
-                format!("{} ", value)
+                value.to_string().into()
             }
-            Self::Pop => "pop",
-            Self::Add => "+",
-            Self::Subtract => "-",
-            Self::Multiply => "*",
-            Self::Divide => "/",
-            Self::Mod => "%",
-            Self::Not => "!",
-            Self::Greater => ">",
-            Self::Pointer => "pointer",
-            Self::Switch => "switch",
-            Self::Duplicate => "dup",
-            Self::Roll => "roll",
-            Self::InNumber => "in_number",
-            Self::InChar => "in_char",
-            Self::OutNumber => "out_number",
-            Self::OutChar => "out_char",
+            Self::Pop => "DROP".into(),
+            Self::Add => "+".into(),
+            Self::Subtract => "-".into(),
+            Self::Multiply => "*".into(),
+            Self::Divide => "/".into(),
+            Self::Mod => "%".into(),
+            Self::Not => "NOT".into(),
+            Self::Greater => "GREATER".into(),
+            Self::Pointer => "DROP".into(),
+            Self::Switch => "DROP".into(),
+            Self::Duplicate => "DUP".into(),
+            Self::Roll => "ROLL".into(),
+            Self::InNumber => "INTEGER-INPUT".into(),
+            Self::InChar => "KEY".into(),
+            Self::OutNumber => ".".into(),
+            Self::OutChar => "EMIT".into(),
             _ => panic!("Command not implemented: {:?}", self),
         }
     }

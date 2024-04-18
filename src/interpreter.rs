@@ -2,6 +2,7 @@ use crate::{
     color::{ColorName, PietColor},
     command::Command,
     stack::Stack,
+    translator::Translator,
 };
 
 #[derive(Debug)]
@@ -76,7 +77,20 @@ impl PietProgram {
     }
 
     pub fn execute(&mut self) {
+        if translate {
+            let t = Some(&Translator::new(output_file));
+            self.run(t);
+        } else {
+            self.run(None);
+        }
+    }
+
+    fn run(&mut self, translator: Option<&Translator>) {
         let mut terminate = false;
+
+        if self.get_color(&self.position).name == ColorName::White {
+            self.glide();
+        }
 
         loop {
             // check to see if we've terminated the program

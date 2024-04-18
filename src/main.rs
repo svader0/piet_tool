@@ -11,7 +11,7 @@ extern crate pretty_env_logger;
 #[command(
     version,
     author,
-    long_about = "Piet interpreter with Forth code generation.",
+    long_about = "Piet interpreter with Forth code translation.",
     color(ColorChoice::Always)
 )]
 struct Args {
@@ -40,6 +40,7 @@ pub mod color;
 pub mod command;
 pub mod interpreter;
 pub mod stack;
+pub mod translator;
 
 use crate::color::PietColor;
 
@@ -53,16 +54,17 @@ fn main() {
     env::set_var("RUST_LOG", "debug");
     pretty_env_logger::init();
     let args = Args::parse();
-    let _grid = load_image(&args.input_file);
-    let _codel_size = args.codel_size;
-    let _input_string = args.input_string;
+    let grid = load_image(&args.input_file);
+    let codel_size = args.codel_size;
+    let input_string = args.input_string;
     let translate = args.translate;
-    let _output_file = args.output_file;
+    let output_file = args.output_file;
+
+    let mut program = PietProgram::new(grid, input_string);
     if translate {
-        // TRANSLATOR
+        program.execute(Some(output_file));
     } else {
-        let mut program = PietProgram::new(_grid, _input_string);
-        program.execute();
+        program.execute(None);
     }
 }
 
