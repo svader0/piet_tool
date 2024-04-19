@@ -199,7 +199,7 @@ impl Command {
             Self::Pointer => "DROP".into(),
             Self::Switch => "DROP".into(),
             Self::Duplicate => "DUP".into(),
-            Self::Roll => "ROLL".into(),
+            Self::Roll => "PIET-ROLL".into(),
             Self::InNumber => "INTEGER-INPUT".into(),
             Self::InChar => "KEY".into(),
             Self::OutNumber => ".".into(),

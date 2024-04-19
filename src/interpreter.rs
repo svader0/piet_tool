@@ -76,16 +76,18 @@ impl PietProgram {
         };
     }
 
-    pub fn execute(&mut self) {
-        if translate {
-            let t = Some(&Translator::new(output_file));
-            self.run(t);
-        } else {
-            self.run(None);
+    pub fn execute(&mut self, output_file: Option<String>) {
+        match output_file {
+            Some(file) => {
+                self.run(&mut Some(Translator::new(file)));
+            }
+            None => {
+                self.run(&mut None);
+            }
         }
     }
 
-    fn run(&mut self, translator: Option<&Translator>) {
+    fn run(&mut self, translator: &mut Option<Translator>) {
         let mut terminate = false;
 
         if self.get_color(&self.position).name == ColorName::White {
@@ -131,7 +133,16 @@ impl PietProgram {
                 command, current_color.name, next_color.name, self.position, lightness_difference, hue_difference, self.current_value, self.stack, self.direction_pointer, self.codel_chooser);
 
             self.position = next_pos;
-            command.execute(self);
+
+            if let Some(translator) = translator.as_mut() {
+                translator.add_command(&command, self);
+            } else {
+                command.execute(self);
+            }
+        }
+        // flush the translator
+        if let Some(translator) = translator.as_mut() {
+            translator.flush();
         }
     }
 
@@ -158,6 +169,7 @@ impl PietProgram {
                 Ok(_) => return false,
                 Err(_) => {
                     if attempts == 8 {
+                        trace!("Terminating program.");
                         return true;
                     }
                     if attempts % 2 == 0 {

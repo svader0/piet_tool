@@ -28,7 +28,7 @@ struct Args {
     translate: bool,
 
     /// The location of the output file (if translating)
-    #[arg(short, long, requires("translate"), default_value = "out.forth")]
+    #[arg(short, long, requires("translate"), default_value = "out.f")]
     output_file: String,
 
     /// Codel Size
@@ -48,10 +48,12 @@ use crate::color::PietColor;
     known issues:
     - roll command is not implemented correctly
     - when you start on white you start on DL 0, DH 0 which is not a valid command
+    - translator causes some programs which would otherwise run fine to loop?
+    - no codel size support
 */
 
 fn main() {
-    env::set_var("RUST_LOG", "debug");
+    env::set_var("RUST_LOG", "trace");
     pretty_env_logger::init();
     let args = Args::parse();
     let grid = load_image(&args.input_file);
