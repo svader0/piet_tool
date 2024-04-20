@@ -21,18 +21,25 @@ impl Stack {
     // where X is the first value popped (top of the stack), and Y is the second value popped (second on the stack).
     // (Example: If the stack is currently 1,2,3, with 3 at the top, and then you push 3 and then 1, and then roll, the new stack is 3,1,2.)
     pub fn roll(&mut self, depth: i32, rolls: i32) {
-        let depth = depth as usize;
-        let rolls = rolls as usize;
-        let len = self.data.len();
-        if depth > len {
+        if depth < 0 || depth > self.len() as i32 {
+            panic!("Invalid depth");
+        }
+
+        if depth == 0 || rolls == 0 {
             return;
         }
-        let mut rolled = self.data.split_off(len - depth);
-        let mid = len - depth + if depth != 0 { rolls % depth } else { 0 };
-        rolled.rotate_left(mid);
-        self.data.append(&mut rolled);
+
+        let depth = depth as usize;
+        let rolls = rolls % depth as i32;
+
+        let split_index = self.len() - depth;
+        let (top, _bottom) = self.data.split_at_mut(split_index);
+
+        // Rotate top part of the stack by rolls
+        top.rotate_right(rolls as usize);
     }
-    pub fn size(&self) -> usize {
+
+    pub fn len(&self) -> usize {
         self.data.len()
     }
 }

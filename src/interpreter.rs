@@ -1,3 +1,5 @@
+use std::net;
+
 use crate::{
     color::{ColorName, PietColor},
     command::Command,
@@ -129,16 +131,21 @@ impl PietProgram {
             // Get the command for the current and next codels
             let command = Command::get_command(lightness_difference, hue_difference);
             trace!(
-                "Command \" {:?} \" chosen based on transition from {:?} to {:?}\nat position {:?}\nwith lightness difference {} and hue difference {}\ncurrent value {}, stack {:?}, direction_pointer = {:?}, codel_chooser = {:?} \n",
-                command, current_color.name, next_color.name, self.position, lightness_difference, hue_difference, self.current_value, self.stack, self.direction_pointer, self.codel_chooser);
-
+                "Command: {:?} chosen for color: {:?}",
+                command,
+                current_color
+            );
+            trace!(
+                "Current position: {:?}, Next position: {:?}",
+                self.position,
+                next_pos
+            );
             self.position = next_pos;
 
             if let Some(translator) = translator.as_mut() {
                 translator.add_command(&command, self);
-            } else {
-                command.execute(self);
             }
+            command.execute(self);
         }
         // flush the translator
         if let Some(translator) = translator.as_mut() {
@@ -185,7 +192,9 @@ impl PietProgram {
         }
     }
 
-    // If the DP encounters a white codel, it will glide along the white codels until it reaches a colored codel.
+    //  White color blocks act like blank spaces.
+    // When the DP encounters a white block, it will simply go through it and move on to the next color block.
+    // No commands are executed when the DP goes through a white block.
     fn glide(&mut self) {
         loop {
             let next_pos = self.get_next_position();
@@ -230,8 +239,6 @@ impl PietProgram {
                 Direction::Up => c.1 == max,
             })
             .collect::<Vec<&(i32, i32)>>();
-
-        // println!("Edge codels: {:?}", edge_codels);
 
         // If there is more than one codel on the edge, choose the one that is furthest in the direction of the CC
         // use the choose_codel method to get the direction of the codel chooser, since it's relative to the DP.
