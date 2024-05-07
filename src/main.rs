@@ -35,9 +35,9 @@ struct Args {
     #[arg(short, long, default_value_t = 1)]
     codel_size: i32,
 
-    /// Debug output
-    #[arg(short, long, default_value_t = false)]
-    debug: bool,
+    /// Max Execution Steps.
+    #[arg(short, long, default_value_t = 220000)]
+    max_steps: i32,
 }
 
 pub mod color;
@@ -51,31 +51,31 @@ use crate::color::PietColor;
 /*
     known issues:
     - roll command is not implemented correctly
+    -
 */
 
 fn main() {
     let args = Args::parse();
-    if args.debug {
-        env::set_var("RUST_LOG", "trace");
-    }
+    env::set_var("RUST_LOG", "trace");
     pretty_env_logger::init();
     let codel_size = args.codel_size;
     let grid = load_image(&args.input_file, codel_size as u32);
     let input_string = args.input_string;
     let translate = args.translate;
     let output_file = args.output_file;
+    let max_steps = args.max_steps;
 
     let start_time = std::time::Instant::now();
 
     let mut program = PietProgram::new(grid, input_string);
     if translate {
-        program.execute(Some(output_file));
+        program.execute(Some(output_file), max_steps);
     } else {
-        program.execute(None);
+        program.execute(None, max_steps);
     }
 
     let elapsed = start_time.elapsed();
-    println!("\nExecution completed in: {:?}", elapsed);
+    debug!("Execution completed in: {:?}", elapsed);
 }
 
 pub fn load_image(path: &str, codel_size: u32) -> Vec<Vec<PietColor>> {
@@ -97,8 +97,8 @@ pub fn load_image(path: &str, codel_size: u32) -> Vec<Vec<PietColor>> {
             result[y as usize / codel_size as usize][x as usize / codel_size as usize] = codel[0];
         }
     }
-    trace!("Loaded image with dimensions: {}x{}", width, height);
-    trace!("Codel size: {}", codel_size);
-    trace!("Size of grid: {}x{}", result[0].len(), result.len());
+    debug!("Loaded image with dimensions: {}x{}", width, height);
+    debug!("Codel size: {}", codel_size);
+    debug!("Size of grid: {}x{}", result[0].len(), result.len());
     result
 }

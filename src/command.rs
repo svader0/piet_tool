@@ -113,6 +113,7 @@ impl Command {
             }
             Self::Pointer => {
                 let mut a = context.stack.pop();
+                let msg_a = a;
                 while a != 0 {
                     if a > 0 {
                         context.move_pointer_clockwise();
@@ -121,7 +122,7 @@ impl Command {
                     }
                     a -= 1;
                 }
-                trace!("Moved pointer {} steps", a);
+                trace!("Moved pointer {} steps", msg_a);
             }
             Self::Switch => {
                 let mut a = context.stack.pop();
@@ -145,17 +146,8 @@ impl Command {
             // TODO: fix roll
             Self::Roll => {
                 let depth = context.stack.pop();
-                let mut rolls = context.stack.pop();
-                if depth < 0 {
-                    return;
-                }
-                if rolls < 0 {
-                    // Adjust rolls to be positive and rotate right
-                    rolls = -rolls;
-                    context.stack.roll(depth, -(rolls % depth));
-                } else {
-                    context.stack.roll(depth, rolls % depth);
-                }
+                let rolls = context.stack.pop();
+                context.stack.roll(depth, rolls);
                 trace!("Rolled stack: depth {} rolls {}", depth, rolls);
             }
             Self::InNumber => {

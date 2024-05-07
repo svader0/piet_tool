@@ -5,6 +5,7 @@ edition = "2021"
 readme = "README.md"
 authors = ["Sam Vader <samvader@duck.com>"]
 description = "A simple Piet interpreter and code translator."
+license = "GPL-3.0-or-later"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

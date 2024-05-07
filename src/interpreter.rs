@@ -1,5 +1,3 @@
-use std::net;
-
 use crate::{
     color::{ColorName, PietColor},
     command::Command,
@@ -78,22 +76,29 @@ impl PietProgram {
         };
     }
 
-    pub fn execute(&mut self, output_file: Option<String>) {
+    pub fn execute(&mut self, output_file: Option<String>, max_steps: i32) {
         match output_file {
             Some(file) => {
-                self.run(&mut Some(Translator::new(file)));
+                self.run(&mut Some(Translator::new(file)), max_steps);
             }
             None => {
-                self.run(&mut None);
+                self.run(&mut None, max_steps);
             }
         }
     }
 
-    fn run(&mut self, translator: &mut Option<Translator>) {
+    fn run(&mut self, translator: &mut Option<Translator>, max_steps: i32) {
         let mut terminate = false;
 
         if self.get_color(&self.position).name == ColorName::White {
             self.glide();
+        }
+
+        let mut steps = 0;
+
+        if steps >= max_steps {
+            error!("Max steps reached! Terminating program.");
+            return;
         }
 
         loop {
@@ -131,21 +136,24 @@ impl PietProgram {
             // Get the command for the current and next codels
             let command = Command::get_command(lightness_difference, hue_difference);
             trace!(
-                "Command: {:?} chosen for color: {:?}",
+                "Command: {:?} chosen for color: {:?} to {:?}",
                 command,
-                current_color
+                current_color,
+                next_color
             );
             trace!(
                 "Current position: {:?}, Next position: {:?}",
                 self.position,
                 next_pos
             );
+            trace!("Stack: {:?}", self.stack);
             self.position = next_pos;
 
             if let Some(translator) = translator.as_mut() {
                 translator.add_command(&command, self);
             }
             command.execute(self);
+            steps += 1;
         }
         // flush the translator
         if let Some(translator) = translator.as_mut() {

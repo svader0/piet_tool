@@ -1,3 +1,5 @@
+use clap::error;
+
 #[derive(Debug)]
 pub struct Stack {
     data: Vec<i32>,
@@ -22,21 +24,20 @@ impl Stack {
     // (Example: If the stack is currently 1,2,3, with 3 at the top, and then you push 3 and then 1, and then roll, the new stack is 3,1,2.)
     pub fn roll(&mut self, depth: i32, rolls: i32) {
         if depth < 0 || depth > self.len() as i32 {
-            panic!("Invalid depth");
+            error!("Invalid depth {} for roll operation", depth);
         }
-
-        if depth == 0 || rolls == 0 {
-            return;
-        }
-
         let depth = depth as usize;
         let rolls = rolls % depth as i32;
-
-        let split_index = self.len() - depth;
-        let (top, _bottom) = self.data.split_at_mut(split_index);
-
-        // Rotate top part of the stack by rolls
-        top.rotate_right(rolls as usize);
+        if rolls == 0 {
+            return;
+        }
+        let mut rolled = self.data.split_off(self.len() - depth);
+        if rolls > 0 {
+            rolled.rotate_left(rolls as usize);
+        } else {
+            rolled.rotate_right(rolls.abs() as usize);
+        }
+        self.data.append(&mut rolled);
     }
 
     pub fn len(&self) -> usize {
