@@ -6,7 +6,7 @@
 : GREATER ( n1 n2 -- 0 | 1 )
   > if 1 else 0 then ;
 
-: roll ( depth rolls -- )
+: PIET_ROLL ( depth rolls -- )
     2dup 0< if
         ." Invalid depth" cr
         abort

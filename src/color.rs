@@ -38,109 +38,109 @@ impl PietColor {
         }
     }
 
-    pub fn from_rgb(rgb: &[u8; 3]) -> Self {
+    pub fn from_rgb(rgb: &[u8; 3]) -> Result<Self, &[u8; 3]> {
         match rgb {
-            [0, 0, 0] => PietColor {
+            [0, 0, 0] => Ok(PietColor {
                 name: ColorName::Black,
                 lightness: -1,
                 hue: 0,
-            },
-            [255, 255, 255] => PietColor {
+            }),
+            [255, 255, 255] => Ok(PietColor {
                 name: ColorName::White,
                 lightness: 1,
                 hue: 0,
-            },
-            [255, 0, 0] => PietColor {
+            }),
+            [255, 0, 0] => Ok(PietColor {
                 name: ColorName::Red,
                 lightness: 0,
                 hue: 0,
-            },
-            [255, 255, 0] => PietColor {
+            }),
+            [255, 255, 0] => Ok(PietColor {
                 name: ColorName::Yellow,
                 lightness: 0,
                 hue: 1,
-            },
-            [0, 255, 0] => PietColor {
+            }),
+            [0, 255, 0] => Ok(PietColor {
                 name: ColorName::Green,
                 lightness: 0,
                 hue: 2,
-            },
-            [0, 255, 255] => PietColor {
+            }),
+            [0, 255, 255] => Ok(PietColor {
                 name: ColorName::Cyan,
                 lightness: 0,
                 hue: 3,
-            },
-            [0, 0, 255] => PietColor {
+            }),
+            [0, 0, 255] => Ok(PietColor {
                 name: ColorName::Blue,
                 lightness: 0,
                 hue: 4,
-            },
-            [255, 0, 255] => PietColor {
+            }),
+            [255, 0, 255] => Ok(PietColor {
                 name: ColorName::Magenta,
                 lightness: 0,
                 hue: 5,
-            },
-            [192, 0, 0] => PietColor {
+            }),
+            [192, 0, 0] => Ok(PietColor {
                 name: ColorName::DarkRed,
                 lightness: -1,
                 hue: 0,
-            },
-            [192, 192, 0] => PietColor {
+            }),
+            [192, 192, 0] => Ok(PietColor {
                 name: ColorName::DarkYellow,
                 lightness: -1,
                 hue: 1,
-            },
-            [0, 192, 0] => PietColor {
+            }),
+            [0, 192, 0] => Ok(PietColor {
                 name: ColorName::DarkGreen,
                 lightness: -1,
                 hue: 2,
-            },
-            [0, 192, 192] => PietColor {
+            }),
+            [0, 192, 192] => Ok(PietColor {
                 name: ColorName::DarkCyan,
                 lightness: -1,
                 hue: 3,
-            },
-            [0, 0, 192] => PietColor {
+            }),
+            [0, 0, 192] => Ok(PietColor {
                 name: ColorName::DarkBlue,
                 lightness: -1,
                 hue: 4,
-            },
-            [192, 0, 192] => PietColor {
+            }),
+            [192, 0, 192] => Ok(PietColor {
                 name: ColorName::DarkMagenta,
                 lightness: -1,
                 hue: 5,
-            },
-            [255, 192, 192] => PietColor {
+            }),
+            [255, 192, 192] => Ok(PietColor {
                 name: ColorName::LightRed,
                 lightness: 1,
                 hue: 0,
-            },
-            [255, 255, 192] => PietColor {
+            }),
+            [255, 255, 192] => Ok(PietColor {
                 name: ColorName::LightYellow,
                 lightness: 1,
                 hue: 1,
-            },
-            [192, 255, 192] => PietColor {
+            }),
+            [192, 255, 192] => Ok(PietColor {
                 name: ColorName::LightGreen,
                 lightness: 1,
                 hue: 2,
-            },
-            [192, 255, 255] => PietColor {
+            }),
+            [192, 255, 255] => Ok(PietColor {
                 name: ColorName::LightCyan,
                 lightness: 1,
                 hue: 3,
-            },
-            [192, 192, 255] => PietColor {
+            }),
+            [192, 192, 255] => Ok(PietColor {
                 name: ColorName::LightBlue,
                 lightness: 1,
                 hue: 4,
-            },
-            [255, 192, 255] => PietColor {
+            }),
+            [255, 192, 255] => Ok(PietColor {
                 name: ColorName::LightMagenta,
                 lightness: 1,
                 hue: 5,
-            },
-            _ => panic!("Invalid color: {:?}", rgb),
+            }),
+            _ => Err(rgb),
         }
     }
 }
