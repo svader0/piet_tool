@@ -22,14 +22,10 @@ pub struct PietProgram {
 }
 
 impl PietProgram {
-    pub fn new(grid: Vec<Vec<PietColor>>, input_string: String) -> Self {
+    pub fn new(grid: Vec<Vec<PietColor>>) -> Self {
         // convert each character in the input string to its ASCII value
         // and put it on the stack
-        let mut piet_stack = Stack::new();
-        for x in input_string.chars() {
-            let ascii = x as i32;
-            piet_stack.push(ascii);
-        }
+        let piet_stack = Stack::new();
         PietProgram {
             grid,
             stack: piet_stack,
@@ -96,11 +92,6 @@ impl PietProgram {
 
         let mut steps = 0;
 
-        if steps >= max_steps {
-            error!("Max steps reached! Terminating program.");
-            return;
-        }
-
         loop {
             // check to see if we've terminated the program
             // which only happens if we've reached a black codel or an edge and we've
@@ -119,14 +110,15 @@ impl PietProgram {
             self.current_value = self.get_codels().len() as i32;
             // Get the color of the current codel
             let current_color = self.get_color(&self.position);
-            // check bounds
 
             // Get the color of the next codel
             let next_pos = self.get_next_position().unwrap();
             let next_color = self.get_color(&next_pos);
+
             // check if white
             if next_color.name == ColorName::White {
                 self.glide();
+                steps += 1;
                 continue;
             }
 
@@ -135,25 +127,37 @@ impl PietProgram {
             let hue_difference = current_color.hue_difference(&next_color);
             // Get the command for the current and next codels
             let command = Command::get_command(lightness_difference, hue_difference);
+
             trace!(
-                "Command: {:?} chosen for color: {:?} to {:?}",
-                command,
-                current_color,
-                next_color
+                "Step {} (CC: {:?} DP: {:?} - {:?} @ ({}, {}) -> {:?} @ ({}, {}))",
+                steps,
+                self.codel_chooser,
+                self.direction_pointer,
+                current_color.name,
+                self.position.0,
+                self.position.1,
+                next_color.name,
+                next_pos.0,
+                next_pos.1
             );
-            trace!(
-                "Current position: {:?}, Next position: {:?}",
-                self.position,
-                next_pos
-            );
-            trace!("Stack: {:?}", self.stack);
             self.position = next_pos;
 
             if let Some(translator) = translator.as_mut() {
                 translator.add_command(&command, self);
             }
             command.execute(self);
-            steps += 1;
+            trace!(
+                "Stack (len {}): {}\n",
+                self.stack.len(),
+                self.stack.to_string()
+            );
+
+            if steps >= max_steps && max_steps != -1 {
+                error!("Exceeded maximum step count.");
+                break;
+            } else {
+                steps += 1;
+            }
         }
         // flush the translator
         if let Some(translator) = translator.as_mut() {
@@ -200,9 +204,9 @@ impl PietProgram {
         }
     }
 
-    //  White color blocks act like blank spaces.
+    // White color blocks act like blank spaces.
     // When the DP encounters a white block, it will simply go through it and move on to the next color block.
-    // No commands are executed when the DP goes through a white block.
+    // AKA it glides through all white blocks without executing any commands.
     fn glide(&mut self) {
         loop {
             let next_pos = self.get_next_position();
@@ -214,12 +218,22 @@ impl PietProgram {
                 || next_pos.0 >= self.grid[0].len() as i32
                 || next_pos.1 < 0
                 || next_pos.1 >= self.grid.len() as i32
-                || self.get_color(&next_pos).name != ColorName::White
             {
                 break;
             }
+            let next_color = self.get_color(&next_pos);
             self.position = next_pos;
+            if next_color.name != ColorName::White {
+                break;
+            }
         }
+        trace!(
+            "White codels(s) crossed, glided from ({}, {}) to ({}, {}). Increasing step by 1. \n",
+            self.position.0,
+            self.position.1,
+            self.get_next_position().unwrap().0,
+            self.get_next_position().unwrap().1
+        );
     }
 
     fn step(&mut self) -> Result<(), ()> {
@@ -234,8 +248,6 @@ impl PietProgram {
             Direction::Left => all_codels.iter().map(|c| c.0).min().unwrap(),
             Direction::Up => all_codels.iter().map(|c| c.1).min().unwrap(),
         };
-
-        // println!("Max value: {}", max);
 
         // Get every codel whose x or y value is equal to the max value
         let edge_codels = all_codels
@@ -293,7 +305,6 @@ impl PietProgram {
     }
 
     // returns all codels in the current color block
-
     fn get_codels(&self) -> Vec<(i32, i32)> {
         let mut codels = Vec::new();
         let mut visited = vec![vec![false; self.grid[0].len()]; self.grid.len()];
@@ -305,7 +316,6 @@ impl PietProgram {
             }
             visited[current.1 as usize][current.0 as usize] = true;
             if self.get_color(&current) == current_color {
-                // Only add codels with the same color as the current position
                 codels.push(current);
             }
             for direction in &[
@@ -323,7 +333,6 @@ impl PietProgram {
                     && next_position.1 >= 0
                     && next_position.1 < self.grid.len() as i32
                     && self.get_color(&next_position) == current_color
-                // Only push positions with the same color as the current position
                 {
                     stack.push(next_position);
                 }

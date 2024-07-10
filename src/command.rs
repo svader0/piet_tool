@@ -66,43 +66,140 @@ impl Command {
                 trace!("Popped value from stack");
             }
             Self::Add => {
-                let a = context.stack.pop();
-                let b = context.stack.pop();
+                let err = "Attempted to add with empty stack. Ignoring.";
+                let a = match context.stack.pop() {
+                    Some(a) => a,
+                    None => {
+                        debug!("{}", err);
+                        return;
+                    }
+                };
+                let b = match context.stack.pop() {
+                    Some(b) => b,
+                    None => {
+                        debug!("{}", err);
+                        return;
+                    }
+                };
                 context.stack.push(a + b);
                 trace!("Added values: {} + {} = {}", a, b, a + b);
             }
             Self::Subtract => {
-                let a = context.stack.pop();
-                let b = context.stack.pop();
+                let err = "Attempted to subtract with empty stack. Ignoring.";
+                let a = match context.stack.pop() {
+                    Some(a) => a,
+                    None => {
+                        debug!("{}", err);
+                        return;
+                    }
+                };
+                let b = match context.stack.pop() {
+                    Some(b) => b,
+                    None => {
+                        context.stack.push(a);
+                        debug!("{}", err);
+                        return;
+                    }
+                };
                 context.stack.push(b - a);
                 trace!("Subtracted values: {} - {} = {}", b, a, b - a);
             }
             Self::Multiply => {
-                let a = context.stack.pop();
-                let b = context.stack.pop();
+                let err = "Attempted to multiply with empty stack. Ignoring.";
+                let a = match context.stack.pop() {
+                    Some(a) => a,
+                    None => {
+                        debug!("{}", err);
+                        return;
+                    }
+                };
+                let b = match context.stack.pop() {
+                    Some(b) => b,
+                    None => {
+                        context.stack.push(a);
+                        debug!("{}", err);
+                        return;
+                    }
+                };
                 context.stack.push(a * b);
                 trace!("Multiplied values: {} * {} = {}", a, b, a * b);
             }
             Self::Divide => {
-                let a = context.stack.pop();
-                let b = context.stack.pop();
-                context.stack.push(b / a);
-                trace!("Divided values: {} / {} = {}", b, a, b / a);
+                let err = "Attempted to divide with empty stack. Ignoring.";
+                let a = match context.stack.pop() {
+                    Some(a) => a,
+                    None => {
+                        debug!("{}", err);
+                        return;
+                    }
+                };
+                let b = match context.stack.pop() {
+                    Some(b) => b,
+                    None => {
+                        context.stack.push(a);
+                        debug!("{}", err);
+                        return;
+                    }
+                };
+                if b != 0 {
+                    context.stack.push(b / a);
+                    trace!("Divided values: {} / {} = {}", b, a, b / a);
+                } else {
+                    trace!("Attempted to divide by zero. Ignoring.");
+                }
             }
             Self::Mod => {
-                let a = context.stack.pop();
-                let b = context.stack.pop();
-                context.stack.push(b % a);
-                trace!("Calculated modulo: {} % {} = {}", b, a, b % a);
+                let err = "Attempted to modulo with empty stack. Ignoring.";
+                let a = match context.stack.pop() {
+                    Some(a) => a,
+                    None => {
+                        debug!("{}", err);
+                        return;
+                    }
+                };
+                let b = match context.stack.pop() {
+                    Some(b) => b,
+                    None => {
+                        context.stack.push(a);
+                        debug!("{}", err);
+                        return;
+                    }
+                };
+                if b != 0 {
+                    context.stack.push(b % a);
+                    trace!("Modulo values: {} % {} = {}", b, a, b % a);
+                } else {
+                    trace!("Attempted to modulo by zero. Ignoring.");
+                }
             }
             Self::Not => {
-                let a = context.stack.pop();
+                let a = match context.stack.pop() {
+                    Some(a) => a,
+                    None => {
+                        debug!("Attempted to negate with empty stack. Ignoring.");
+                        return;
+                    }
+                };
                 context.stack.push(if a == 0 { 1 } else { 0 });
                 trace!("Negated value: !{}", a);
             }
             Self::Greater => {
-                let a = context.stack.pop();
-                let b = context.stack.pop();
+                let err = "Attempted to compare with empty stack. Ignoring.";
+                let a = match context.stack.pop() {
+                    Some(a) => a,
+                    None => {
+                        debug!("{}", err);
+                        return;
+                    }
+                };
+                let b = match context.stack.pop() {
+                    Some(b) => b,
+                    None => {
+                        context.stack.push(a);
+                        debug!("{}", err);
+                        return;
+                    }
+                };
                 context.stack.push(if b > a { 1 } else { 0 });
                 trace!(
                     "Compared values: {} > {} = {}",
@@ -112,7 +209,14 @@ impl Command {
                 );
             }
             Self::Pointer => {
-                let mut a = context.stack.pop();
+                let err = "Attempted to move pointer with empty stack. Ignoring.";
+                let mut a = match context.stack.pop() {
+                    Some(a) => a,
+                    None => {
+                        debug!("{}", err);
+                        return;
+                    }
+                };
                 let msg_a = a;
                 while a != 0 {
                     if a > 0 {
@@ -125,7 +229,13 @@ impl Command {
                 trace!("Moved pointer {} steps", msg_a);
             }
             Self::Switch => {
-                let mut a = context.stack.pop();
+                let mut a = match context.stack.pop() {
+                    Some(a) => a,
+                    None => {
+                        debug!("Attempted to toggle codel chooser with empty stack. Ignoring.");
+                        return;
+                    }
+                };
                 while a != 0 {
                     context.toggle_codel_chooser();
                     a -= 1;
@@ -133,7 +243,13 @@ impl Command {
                 trace!("Toggled codel chooser {} times", a);
             }
             Self::Duplicate => {
-                let a = context.stack.pop();
+                let a = match context.stack.pop() {
+                    Some(a) => a,
+                    None => {
+                        debug!("Attempted to duplicate with empty stack. Ignoring.");
+                        return;
+                    }
+                };
                 context.stack.push(a);
                 context.stack.push(a);
                 trace!("Duplicated value: {}", a);
@@ -142,33 +258,46 @@ impl Command {
             // by a number of rolls equal to the first value popped. A single roll to depth n is defined as burying the top value on the stack n deep and bringing all values
             // above it up by 1 place. A negative number of rolls rolls in the opposite direction. A negative depth is an error and the command is ignored.
             //If a roll is greater than an implementation-dependent maximum stack depth, it is handled as an implementation-dependent error, though simply ignoring the command is recommended.
-
-            // TODO: fix roll
             Self::Roll => {
-                let depth = context.stack.pop();
-                let rolls = context.stack.pop();
-                context.stack.roll(depth, rolls);
-                trace!("Rolled stack: depth {} rolls {}", depth, rolls);
+                context.stack.roll();
             }
             Self::InNumber => {
-                let value = Self::get_input_number();
-                context.stack.push(value);
-                trace!("Input number: {}", value);
+                context.stack.in_number();
             }
             Self::InChar => {
-                let value = Self::get_input_char();
-                context.stack.push(value as i32);
-                trace!("Input character: {}", value as char);
+                context.stack.in_char();
             }
             Self::OutNumber => {
-                let value = context.stack.pop();
+                let value = match context.stack.pop() {
+                    Some(value) => value,
+                    None => {
+                        debug!("Attempted to output with empty stack. Ignoring.");
+                        return;
+                    }
+                };
                 Self::output_number(value);
                 trace!("Output number: {}", value);
             }
             Self::OutChar => {
-                let value = context.stack.pop();
-                Self::output_char(value as u8);
-                trace!("Output character: {}", value as u8 as char);
+                let value = match context.stack.pop() {
+                    Some(value) => value,
+                    None => {
+                        debug!("Attempted to output with empty stack. Ignoring.");
+                        return;
+                    }
+                };
+
+                if value < 0 || value > char::MAX as i32 {
+                    debug!(
+                        "Attempted to output invalid character: {}. Ignoring.",
+                        value
+                    );
+                    return;
+                }
+                let c = value as u8;
+
+                Self::output_char(c);
+                trace!("Output character: {}", c as char);
             }
             _ => panic!("Command not implemented: {:?}", self),
         }
@@ -206,17 +335,5 @@ impl Command {
 
     fn output_number(value: i32) {
         print!("{}", value);
-    }
-
-    fn get_input_char() -> u8 {
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).unwrap();
-        input.chars().next().unwrap() as u8
-    }
-
-    fn get_input_number() -> i32 {
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).unwrap();
-        input.trim().parse().unwrap()
     }
 }

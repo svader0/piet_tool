@@ -19,24 +19,24 @@ struct Args {
     #[arg()]
     input_file: String,
 
-    /// The input string to be processed. Each character is pushed onto the stack prior to program execution.
-    #[arg(short, long, requires("input_file"), default_value = "")]
-    input_string: String,
-
     /// Translate the program to Forth code
-    #[arg(short, long, default_value_t = false)]
+    #[arg(short = 'f', long, default_value_t = false)]
     translate: bool,
 
     /// The location of the output file (if translating)
     #[arg(short, long, requires("translate"), default_value = "out.f")]
     output_file: String,
 
+    /// Debug level (0 = error, 1 = info, 2 = debug, 3 = trace)
+    #[arg(short, long, default_value_t = 0)]
+    debug: i32,
+
     /// Codel Size
     #[arg(short, long, default_value_t = 1)]
     codel_size: i32,
 
-    /// Max Execution Steps.
-    #[arg(short, long, default_value_t = 220000)]
+    /// Max Execution Steps. (-1 for infinite.)
+    #[arg(short, long, default_value_t = -1)]
     max_steps: i32,
 }
 
@@ -48,26 +48,23 @@ pub mod translator;
 
 use crate::color::PietColor;
 
-/*
-    known issues:
-    - roll command is not implemented correctly
-    -
-*/
-
 fn main() {
     let args = Args::parse();
-    env::set_var("RUST_LOG", "trace");
-    pretty_env_logger::init();
     let codel_size = args.codel_size;
-    let grid = load_image(&args.input_file, codel_size as u32);
-    let input_string = args.input_string;
     let translate = args.translate;
     let output_file = args.output_file;
     let max_steps = args.max_steps;
-
+    match args.debug {
+        1 => env::set_var("RUST_LOG", "info"),
+        2 => env::set_var("RUST_LOG", "debug"),
+        3 => env::set_var("RUST_LOG", "trace"),
+        _ => env::set_var("RUST_LOG", "error"),
+    }
+    pretty_env_logger::init();
+    let grid = load_image(&args.input_file, codel_size as u32);
     let start_time = std::time::Instant::now();
 
-    let mut program = PietProgram::new(grid, input_string);
+    let mut program = PietProgram::new(grid);
     if translate {
         program.execute(Some(output_file), max_steps);
     } else {
@@ -79,6 +76,7 @@ fn main() {
 }
 
 pub fn load_image(path: &str, codel_size: u32) -> Vec<Vec<PietColor>> {
+    let start_time = std::time::Instant::now();
     let img = image::open(path).expect("Failed to open image");
     let img = img.to_rgb8();
     let (width, height) = img.dimensions();
@@ -92,13 +90,27 @@ pub fn load_image(path: &str, codel_size: u32) -> Vec<Vec<PietColor>> {
             for i in 0..codel_size {
                 let pixel = img.get_pixel(x, y + i);
                 let rgb = [pixel[0], pixel[1], pixel[2]];
-                codel[i as usize] = PietColor::from_rgb(&rgb);
+                match PietColor::from_rgb(&rgb) {
+                    Ok(color) => codel[i as usize] = color,
+                    Err(_) => {
+                        error!("Invalid color detected at ({:?}, {:?}): {:?}", x, y, rgb);
+                        std::process::exit(1);
+                    }
+                }
             }
             result[y as usize / codel_size as usize][x as usize / codel_size as usize] = codel[0];
         }
     }
-    debug!("Loaded image with dimensions: {}x{}", width, height);
-    debug!("Codel size: {}", codel_size);
-    debug!("Size of grid: {}x{}", result[0].len(), result.len());
+    let elapsed = start_time.elapsed();
+    debug!(
+        "Loaded image with dimensions: {}x{} in {:?}",
+        width, height, elapsed
+    );
+    debug!(
+        "Size of grid: {}x{}. Codel size: {}",
+        result[0].len(),
+        result.len(),
+        codel_size
+    );
     result
 }
