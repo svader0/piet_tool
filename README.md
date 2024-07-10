@@ -51,8 +51,3 @@ The `examples` directory contains some example Piet programs that you can run wi
 ```
 
 This will output `Hello, World!` to the console.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-The exception is the `examples` directory, which contains Piet programs that I found online. The only example I wrote is 'Fogarty.png', the rest are from the [Piet website](http://www.dangermouse.net/esoteric/piet/samples.html) or other sources.
