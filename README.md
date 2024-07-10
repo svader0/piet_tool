@@ -11,6 +11,7 @@ Piet_Tool is a work in progress and has some limitations. The main limitations a
 - Some programs will run indefinitely. This is due to a bug in the way Piet_Tool handles termination conditions. This is a known issue and will be fixed in a future release.
 - The Forth translation is not very good. Some Piet programs will not translate correctly to Forth, or will just be translated in a way that is verbose and stupid. The translation feature is a work in progress.
 - The interpreter is not very fast. Piet programs can be slow to run, especially if they are large or complex. Not like anybody picks Piet for its speed though...
+- Programs that contain character or numerical input may not work. This is a work in progress.
 
 ## Usage
 
